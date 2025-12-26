@@ -40,10 +40,17 @@ export const createCollection = async (req: AuthRequest, res: Response): Promise
 export const getMyCollections = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         // @ts-ignore
-        const ownerId = req.user?.userId;
-        const collections = await Collection.find({ ownerId }).sort({ createdAt: -1 });
+        const userId = req.user?.userId;
+        // console.log('Fetching collections for user:', userId);
+
+        // Ensure accurate query even if implicit casting fails (rare but possible)
+        const collections = await Collection.find({
+            ownerId: userId
+        }).sort({ createdAt: -1 });
+
         res.json(collections);
     } catch (error) {
+        console.error('Error fetching collections:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };
