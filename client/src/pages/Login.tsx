@@ -14,13 +14,20 @@ const Login: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            toast.error('Please enter a valid email address');
+            return;
+        }
+
         try {
             const res = await loginUser({ email, password });
             login(res.data.token, res.data.user);
             toast.success('Welcome back!');
             navigate('/');
-        } catch (err) {
-            toast.error('Invalid credentials');
+        } catch (err: any) {
+            const msg = err.response?.data?.error || 'Invalid credentials';
+            toast.error(msg);
         }
     };
 
@@ -66,7 +73,7 @@ const Login: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                    <button type="submit" className="btn-primary w-full">Data Login</button>
+                    <button type="submit" className="btn-primary w-full">Login</button>
                 </form>
                 <p className="mt-4 text-center text-indigo-200">
                     Don't have an account? <Link to="/register" className="text-cyan-400 font-bold hover:underline">Register</Link>

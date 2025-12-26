@@ -39,14 +39,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         const user = await User.findOne({ email });
         if (!user) {
             console.log(`[LOGIN FAILED] User not found: ${email}`);
-            res.status(400).json({ error: 'Invalid credentials' });
+            res.status(400).json({ error: 'User not found' });
             return;
         }
 
         const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) {
             console.log(`[LOGIN FAILED] Password mismatch for: ${email}`);
-            res.status(400).json({ error: 'Invalid credentials' });
+            res.status(400).json({ error: 'Incorrect password' });
             return;
         }
 
