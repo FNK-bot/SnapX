@@ -1,0 +1,35 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5">
+        <animate attributeName="stop-color" values="#4f46e5; #22d3ee; #4f46e5" dur="4s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="50%" stop-color="#7c3aed">
+         <animate attributeName="stop-color" values="#7c3aed; #4f46e5; #7c3aed" dur="4s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="100%" stop-color="#22d3ee">
+        <animate attributeName="stop-color" values="#22d3ee; #7c3aed; #22d3ee" dur="4s" repeatCount="indefinite" />
+      </stop>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g filter="url(#glow)">
+      <!-- Main X Shape -->
+      <path d="M140 140 L372 372" stroke="url(#grad)" stroke-width="50" stroke-linecap="round" />
+      <path d="M372 140 L140 372" stroke="url(#grad)" stroke-width="50" stroke-linecap="round" />
+      
+      <!-- Tech Accents (Aperture hints) -->
+      <path d="M256 50 A 206 206 0 0 1 462 256" fill="none" stroke="url(#grad)" stroke-width="25" stroke-linecap="round" opacity="0.8"/>
+      <path d="M256 462 A 206 206 0 0 1 50 256" fill="none" stroke="url(#grad)" stroke-width="25" stroke-linecap="round" opacity="0.8"/>
+      
+      <!-- Center Dot -->
+      <circle cx="256" cy="256" r="15" fill="white" />
+  </g>
+</svg>
