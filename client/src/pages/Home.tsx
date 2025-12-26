@@ -81,11 +81,11 @@ const Home: React.FC = () => {
                         The future of event photo sharing. <br />
                         <span className="font-medium opacity-90">Instant AI-powered delivery for every guest.</span>
                     </p>
-                    <div className="mt-8 space-x-4">
-                        <Link to="/login" className="btn-primary inline-flex items-center px-8 py-3 rounded-full text-lg">
+                    <div className="mt-8 flex flex-col md:flex-row gap-4 justify-center">
+                        <Link to="/login" className="btn-primary inline-flex justify-center items-center px-8 py-3 rounded-full text-lg w-full md:w-auto">
                             Login to Create Event
                         </Link>
-                        <Link to="/register" className="btn-secondary inline-flex items-center px-8 text-white">
+                        <Link to="/register" className="btn-secondary inline-flex justify-center items-center px-8 py-3 w-full md:w-auto text-white border border-white/20 hover:bg-white/10 rounded-full">
                             Register
                         </Link>
                     </div>

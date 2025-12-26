@@ -12,11 +12,40 @@ const Login: React.FC = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
 
+    const [emailError, setEmailError] = useState('');
+    const [passwordError, setPasswordError] = useState('');
+
+    const validateEmail = (val: string) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(val)) {
+            setEmailError('Invalid email address');
+        } else {
+            setEmailError('');
+        }
+    };
+
+    const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setEmail(e.target.value);
+        if (e.target.value) validateEmail(e.target.value);
+        else setEmailError('');
+    };
+
+    const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPassword(e.target.value);
+        if (e.target.value && e.target.value.length < 4) {
+            setPasswordError('Password too short');
+        } else {
+            setPasswordError('');
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Final check before submit
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            toast.error('Please enter a valid email address');
+            setEmailError('Invalid email address');
             return;
         }
 
@@ -45,11 +74,12 @@ const Login: React.FC = () => {
                         <label className="block text-indigo-200 text-sm font-bold mb-2">Email</label>
                         <input
                             type="email"
-                            className="glass-input"
+                            className={`glass-input ${emailError ? 'border-red-500 focus:border-red-500' : ''}`}
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={handleEmailChange}
                             required
                         />
+                        {emailError && <p className="text-red-400 text-xs mt-1">{emailError}</p>}
                     </div>
                     <div>
                         <div>
@@ -57,9 +87,9 @@ const Login: React.FC = () => {
                             <div className="relative">
                                 <input
                                     type={showPassword ? "text" : "password"}
-                                    className="glass-input pr-10"
+                                    className={`glass-input pr-10 ${passwordError ? 'border-red-500 focus:border-red-500' : ''}`}
                                     value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
+                                    onChange={handlePasswordChange}
                                     required
                                     minLength={4}
                                 />
@@ -71,9 +101,10 @@ const Login: React.FC = () => {
                                     {showPassword ? <FaEyeSlash /> : <FaEye />}
                                 </button>
                             </div>
+                            {passwordError && <p className="text-red-400 text-xs mt-1">{passwordError}</p>}
                         </div>
                     </div>
-                    <button type="submit" className="btn-primary w-full">Login</button>
+                    <button type="submit" disabled={!!emailError || !!passwordError} className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed">Login</button>
                 </form>
                 <p className="mt-4 text-center text-indigo-200">
                     Don't have an account? <Link to="/register" className="text-cyan-400 font-bold hover:underline">Register</Link>
