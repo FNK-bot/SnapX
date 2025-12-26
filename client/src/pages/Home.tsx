@@ -16,6 +16,7 @@ const Home: React.FC = () => {
     const { isAuthenticated, logout, user } = useAuth();
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
+    const [coverImage, setCoverImage] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
     const [myCollections, setMyCollections] = useState<CollectionSummary[]>([]);
     const navigate = useNavigate();
@@ -39,7 +40,14 @@ const Home: React.FC = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await createCollection({ name, description });
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('description', description);
+            if (coverImage) {
+                formData.append('coverImage', coverImage);
+            }
+
+            const res = await createCollection(formData);
             toast.success('Collection created!');
             navigate(`/collections/${res.data._id}`);
         } catch (err) {
@@ -126,10 +134,19 @@ const Home: React.FC = () => {
                             <div>
                                 <label className="block text-xs font-bold text-indigo-300 mb-1 uppercase">Description</label>
                                 <textarea
-                                    className="glass-input min-h-[100px]"
+                                    className="glass-input min-h-[80px]"
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     placeholder="Details..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-indigo-300 mb-1 uppercase">Cover Image (Optional)</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="block w-full text-indigo-200 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-500/20 file:text-cyan-400 hover:file:bg-indigo-500/30"
+                                    onChange={(e) => setCoverImage(e.target.files ? e.target.files[0] : null)}
                                 />
                             </div>
                             <button

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getCollection, findMyPhotos, uploadImages } from '../api';
-import { FaCloudUploadAlt, FaSearch, FaCamera, FaImages, FaCheckCircle, FaMagic, FaDownload, FaExpand, FaTimes, FaHome } from 'react-icons/fa';
+import { getCollection, findMyPhotos, uploadImages, getCollectionImages } from '../api';
+import { FaCloudUploadAlt, FaSearch, FaCamera, FaImages, FaCheckCircle, FaMagic, FaDownload, FaExpand, FaTimes, FaHome, FaTh } from 'react-icons/fa';
 import { QRCodeCanvas } from 'qrcode.react';
 import { loadModels, getFaceDescriptor, getAllFaceDescriptors, loadImageFromBlob } from '../utils/faceService';
 import toast from 'react-hot-toast';
@@ -12,6 +12,7 @@ interface CollectionData {
     name: string;
     description?: string;
     qrCodeUrl?: string;
+    coverImage?: string;
     ownerId: string;
 }
 
@@ -26,7 +27,7 @@ const Collection: React.FC = () => {
     const [collection, setCollection] = useState<CollectionData | null>(null);
     const [loading, setLoading] = useState(true);
     const [modelLoading, setModelLoading] = useState(true);
-    const [mode, setMode] = useState<'find' | 'upload'>('find');
+    const [mode, setMode] = useState<'find' | 'upload' | 'gallery'>('find');
 
     // Find Mode State
     const [selfie, setSelfie] = useState<File | null>(null);
@@ -40,6 +41,12 @@ const Collection: React.FC = () => {
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadStatus, setUploadStatus] = useState('');
+
+    // Gallery Mode State
+    const [allImages, setAllImages] = useState<ImageResult[]>([]);
+    const [galleryLoading, setGalleryLoading] = useState(false);
+
+    const [showShareModal, setShowShareModal] = useState(false);
 
     useEffect(() => {
         loadModels().then(() => setModelLoading(false));
@@ -55,6 +62,58 @@ const Collection: React.FC = () => {
     }, [id]);
 
     const isOwner = user && collection && user.id === collection.ownerId;
+
+    useEffect(() => {
+        console.log(`[Collection] Effect: mode=${mode}, isOwner=${isOwner}, id=${id}`);
+        if (mode === 'gallery' && isOwner && id) {
+            setGalleryLoading(true);
+            getCollectionImages(id)
+                .then(res => {
+                    console.log('[Collection] Fetched images:', res.data);
+                    setAllImages(res.data);
+                })
+                .catch(err => {
+                    console.error(err);
+                    toast.error('Failed to load gallery');
+                })
+                .finally(() => setGalleryLoading(false));
+        }
+    }, [mode, isOwner, id]);
+
+    const handleShare = async () => {
+        if (!collection) return;
+        const shareData = {
+            title: collection.name,
+            text: `Check out the photos from ${collection.name}!`,
+            url: `${window.location.origin}/api/collections/${collection._id}/share`,
+        };
+
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData);
+            } else {
+                setShowShareModal(true);
+            }
+        } catch (err) {
+            console.error('Error handling share', err);
+        }
+    };
+
+    const downloadQRCode = () => {
+        const canvas = document.querySelector('#qr-code-wrapper canvas') as HTMLCanvasElement;
+        if (canvas) {
+            const pngUrl = canvas.toDataURL('image/png');
+            const downloadLink = document.createElement('a');
+            downloadLink.href = pngUrl;
+            downloadLink.download = `${collection?.name.replace(/\s+/g, '-').toLowerCase()}-qr.png`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            toast.success('QR Code downloaded');
+        } else {
+            toast.error('Could not generate QR code image');
+        }
+    };
 
     const handleSelfieChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -99,9 +158,13 @@ const Collection: React.FC = () => {
 
     const handleUploadFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            setUploadFiles(Array.from(e.target.files));
-            toast.success(`${e.target.files.length} photos selected`);
+            setUploadFiles(prev => [...prev, ...Array.from(e.target.files || [])]);
+            toast.success(`${e.target.files.length} photos added`);
         }
+    };
+
+    const removeFile = (index: number) => {
+        setUploadFiles(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleUploadImages = async () => {
@@ -138,6 +201,7 @@ const Collection: React.FC = () => {
             setUploadProgress(100);
             toast.success('Images uploaded successfully!');
             setUploadFiles([]);
+            setMode('gallery');
         } catch (err) {
             console.error(err);
             toast.error('Failed to upload images. Are you authorized?');
@@ -183,21 +247,41 @@ const Collection: React.FC = () => {
         <div className="min-h-screen pb-20">
 
             {/* Glass Header */}
-            <header className="glass-panel border-t-0 border-x-0 rounded-b-2xl sticky top-0 z-40 backdrop-blur-xl">
-                <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <header className="glass-panel border-t-0 border-x-0 rounded-b-2xl sticky top-0 z-40 backdrop-blur-xl transition-all duration-300">
+                {/* Hero Background if Cover Image Exists */}
+                {collection.coverImage && (
+                    <div className="absolute inset-0 z-[-1] opacity-30 rounded-b-2xl overflow-hidden">
+                        <img src={collection.coverImage} alt="Cover" className="w-full h-full object-cover blur-sm" />
+                        <div className="absolute inset-0 bg-gradient-to-b from-indigo-900/50 to-indigo-900/90"></div>
+                    </div>
+                )}
+
+                <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center relative z-10">
                     <div className="flex items-center gap-4">
                         <Link to="/" className="text-white/50 hover:text-white transition-colors">
                             <FaHome size={24} />
                         </Link>
                         <div>
-                            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-wide drop-shadow-sm">{collection?.name}</h1>
+                            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-wide drop-shadow-sm flex items-center gap-2">
+                                {collection?.name}
+                            </h1>
                             <p className="text-indigo-200 text-xs md:text-sm hidden md:block mt-1 font-medium">{collection?.description || 'Event Gallery'}</p>
                         </div>
                     </div>
-                    <div className="flex items-center space-x-4">
-                        <div className="hidden md:block bg-white p-2 rounded-xl shadow-lg">
-                            <QRCodeCanvas value={window.location.href} size={54} />
-                        </div>
+                    <div className="flex items-center space-x-3">
+                        <button
+                            onClick={() => setShowShareModal(true)}
+                            className="bg-white/10 text-white p-2.5 rounded-full hover:bg-white/20 transition-all flex items-center justify-center backdrop-blur-md"
+                            title="Show QR Code"
+                        >
+                            <FaTh size={18} />
+                        </button>
+                        <button
+                            onClick={handleShare}
+                            className="bg-white text-indigo-900 px-4 py-2 rounded-full font-bold text-sm shadow-lg hover:scale-105 transition-transform flex items-center"
+                        >
+                            <FaCheckCircle className="mr-2" /> Share
+                        </button>
                     </div>
                 </div>
             </header>
@@ -216,18 +300,27 @@ const Collection: React.FC = () => {
                         <div className="bg-black/20 p-1.5 rounded-full flex space-x-1 border border-white/10 backdrop-blur-md shadow-xl">
                             <button
                                 onClick={() => setMode('find')}
-                                className={`px-8 py-3 rounded-full text-sm font-bold transition-all duration-300 flex items-center ${mode === 'find'
-                                        ? 'bg-white text-indigo-900 shadow-lg scale-105'
-                                        : 'text-indigo-200 hover:text-white hover:bg-white/10'
+                                className={`px-6 py-3 rounded-full text-sm font-bold transition-all duration-300 flex items-center ${mode === 'find'
+                                    ? 'bg-white text-indigo-900 shadow-lg scale-105'
+                                    : 'text-indigo-200 hover:text-white hover:bg-white/10'
                                     }`}
                             >
-                                <FaSearch className="mr-2" /> Find Photos
+                                <FaSearch className="mr-2" /> Find
+                            </button>
+                            <button
+                                onClick={() => setMode('gallery')}
+                                className={`px-6 py-3 rounded-full text-sm font-bold transition-all duration-300 flex items-center ${mode === 'gallery'
+                                    ? 'bg-white text-indigo-900 shadow-lg scale-105'
+                                    : 'text-indigo-200 hover:text-white hover:bg-white/10'
+                                    }`}
+                            >
+                                <FaTh className="mr-2" /> Gallery
                             </button>
                             <button
                                 onClick={() => setMode('upload')}
-                                className={`px-8 py-3 rounded-full text-sm font-bold transition-all duration-300 flex items-center ${mode === 'upload'
-                                        ? 'bg-white text-indigo-900 shadow-lg scale-105'
-                                        : 'text-indigo-200 hover:text-white hover:bg-white/10'
+                                className={`px-6 py-3 rounded-full text-sm font-bold transition-all duration-300 flex items-center ${mode === 'upload'
+                                    ? 'bg-white text-indigo-900 shadow-lg scale-105'
+                                    : 'text-indigo-200 hover:text-white hover:bg-white/10'
                                     }`}
                             >
                                 <FaCloudUploadAlt className="mr-2" /> Upload
@@ -319,6 +412,50 @@ const Collection: React.FC = () => {
                     </div>
                 )}
 
+                {/* Gallery Mode (Owners Only) */}
+                {mode === 'gallery' && isOwner && (
+                    <div className="animate-fade-in">
+                        <div className="flex items-center justify-between mb-8 glass-panel py-3 px-6 rounded-full">
+                            <h2 className="text-xl font-bold text-white">
+                                All Photos <span className="text-indigo-400 text-sm ml-2">({allImages.length})</span>
+                            </h2>
+                        </div>
+                        {galleryLoading ? (
+                            <div className="flex justify-center p-20">
+                                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400"></div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                                {allImages.map(img => (
+                                    <div key={img._id} className="group relative aspect-[3/4] rounded-2xl overflow-hidden shadow-xl border border-white/10 bg-black/50">
+                                        <img src={img.cloudinaryUrl} alt="Gallery" className="w-full h-full object-cover" loading="lazy" />
+
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-2">
+                                            <button
+                                                onClick={() => setSelectedImage(img.cloudinaryUrl)}
+                                                className="bg-white/90 text-indigo-900 p-3 rounded-full hover:scale-110 transition-transform"
+                                            >
+                                                <FaExpand />
+                                            </button>
+                                            <button
+                                                onClick={() => downloadImage(img.cloudinaryUrl)}
+                                                className="bg-indigo-500/90 text-white p-3 rounded-full hover:scale-110 transition-transform"
+                                            >
+                                                <FaDownload />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {allImages.length === 0 && (
+                                    <div className="col-span-full text-center py-20 text-indigo-300">
+                                        No photos uploaded yet.
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Upload Mode (Strictly for Owners) */}
                 {mode === 'upload' && isOwner && (
                     <div className="max-w-xl mx-auto animate-fade-in">
@@ -346,13 +483,46 @@ const Collection: React.FC = () => {
                                 />
                             </label>
 
-                            <div className="mb-6 min-h-[24px]">
+                            <div className="mb-8">
                                 {uploadFiles.length > 0 ? (
-                                    <div className="inline-flex items-center bg-indigo-500/30 px-4 py-1 rounded-full border border-indigo-400/30">
-                                        <span className="text-white font-medium">{uploadFiles.length} photos selected</span>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-h-[400px] overflow-y-auto custom-scrollbar p-2">
+                                        {uploadFiles.map((file, index) => (
+                                            <div key={index} className="relative group aspect-square rounded-xl overflow-hidden border border-white/20">
+                                                <img
+                                                    src={URL.createObjectURL(file)}
+                                                    alt="Preview"
+                                                    className="w-full h-full object-cover"
+                                                />
+
+                                                {/* Remove Button (only when not uploading) */}
+                                                {!uploading && (
+                                                    <button
+                                                        onClick={() => removeFile(index)}
+                                                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-all opacity-100 md:opacity-0 group-hover:opacity-100"
+                                                    >
+                                                        <FaTimes size={12} />
+                                                    </button>
+                                                )}
+
+                                                {/* Uploading Progress Overlay */}
+                                                {uploading && (
+                                                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-2 text-center backdrop-blur-sm">
+                                                        <div className="w-full bg-white/20 rounded-full h-1.5 mb-2 overflow-hidden">
+                                                            <div
+                                                                className="bg-cyan-400 h-full transition-all duration-300"
+                                                                style={{ width: `${uploadProgress}%` }}
+                                                            ></div>
+                                                        </div>
+                                                        <span className="text-xs text-white font-mono">{uploadProgress}%</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
                                     </div>
                                 ) : (
-                                    <span className="text-indigo-300/50 text-sm italic">No files selected</span>
+                                    <div className="mb-6 min-h-[24px]">
+                                        <span className="text-indigo-300/50 text-sm italic">No files selected</span>
+                                    </div>
                                 )}
                             </div>
 
@@ -411,6 +581,49 @@ const Collection: React.FC = () => {
                                 className="btn-primary px-8 py-3 flex items-center"
                             >
                                 <FaDownload className="mr-2" /> Download Original
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Share Modal */}
+            {showShareModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setShowShareModal(false)}>
+                    <div className="bg-white/10 border border-white/20 p-8 rounded-2xl max-w-md w-full text-center relative" onClick={e => e.stopPropagation()}>
+                        <button
+                            className="absolute top-4 right-4 text-white/50 hover:text-white text-xl transition-colors"
+                            onClick={() => setShowShareModal(false)}
+                        >
+                            <FaTimes />
+                        </button>
+
+                        <h3 className="text-2xl font-bold text-white mb-6">Scan to Share</h3>
+
+                        <div id="qr-code-wrapper" className="bg-white p-4 rounded-xl shadow-lg inline-block mb-6">
+                            <QRCodeCanvas value={window.location.href} size={200} includeMargin />
+                        </div>
+
+                        <p className="text-indigo-200 mb-6 font-light">
+                            Guests can scan this QR code to find their photos instantly.
+                        </p>
+
+                        <div className="flex flex-col gap-3">
+                            <button
+                                onClick={downloadQRCode}
+                                className="btn-secondary w-full py-3 flex items-center justify-center text-white bg-white/10 hover:bg-white/20"
+                            >
+                                <FaDownload className="mr-2" /> Download QR Image
+                            </button>
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(window.location.href);
+                                    toast.success('Link copied to clipboard!');
+                                    setShowShareModal(false);
+                                }}
+                                className="btn-primary w-full py-3"
+                            >
+                                Copy Link
                             </button>
                         </div>
                     </div>

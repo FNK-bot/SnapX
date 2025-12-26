@@ -9,7 +9,7 @@ export const registerUser = (data: any) => api.post('/auth/register', data);
 export const loginUser = (data: any) => api.post('/auth/login', data);
 
 // Collections API
-export const createCollection = (data: { name: string; description?: string }) => api.post('/collections', data);
+export const createCollection = (data: FormData) => api.post('/collections', data);
 export const getMyCollections = () => api.get('/collections');
 export const getCollection = (id: string) => api.get(`/collections/${id}`);
 export const deleteCollection = (id: string) => api.delete(`/collections/${id}`);
@@ -21,5 +21,7 @@ export const uploadImages = (id: string, formData: FormData) =>
 
 export const findMyPhotos = (id: string, descriptor: number[]) =>
     api.post(`/collections/${id}/find-my-photos`, { descriptor });
+
+export const getCollectionImages = (id: string) => api.get(`/collections/${id}/images`);
 
 export default api;
